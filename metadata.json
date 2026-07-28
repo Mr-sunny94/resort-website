@@ -1,6 +1,0 @@
-{
-  "name": "MustET",
-  "description": "Luxury resort booking website featuring dynamic loop background animations, interactive room booking, customizable gallery, and advanced normal + social authentication options.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
