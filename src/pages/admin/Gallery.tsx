@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { ResortGallery } from '../../types';
-import { Plus, Edit2, CheckCircle2, XCircle, Image as ImageIcon, Sparkles, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Image as ImageIcon, Sparkles, Upload } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function Gallery() {
@@ -60,6 +60,17 @@ export default function Gallery() {
     }
     setIsModalOpen(false);
     fetchImages();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
+      const { error } = await supabase.from('resort_gallery').delete().eq('id', id);
+      if (error) {
+        console.error('Delete error:', error);
+        alert(`Failed to delete: ${error.message || 'Unknown error'}`);
+      }
+      fetchImages();
+    }
   };
 
   return (
@@ -130,12 +141,22 @@ export default function Gallery() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleOpenModal(item)}
-                        className="p-2 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-800"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex justify-end items-center space-x-2">
+                        <button
+                          onClick={() => handleOpenModal(item)}
+                          className="p-2 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-800"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-800"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

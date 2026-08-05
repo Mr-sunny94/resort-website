@@ -61,6 +61,7 @@ export type ResortSettings = {
   resort_logo_url?: string;
   atmosphere_media_url?: string;
   atmosphere_media_type?: 'image' | 'video';
+  map_embed_url?: string;
   created_at: string;
 };
 

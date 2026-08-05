@@ -35,6 +35,7 @@ export default function Settings() {
       currentSettings.resort_logo_url = localStorage.getItem('resort_logo_url') || currentSettings.resort_logo_url;
       currentSettings.atmosphere_media_url = localStorage.getItem('atmosphere_media_url') || currentSettings.atmosphere_media_url;
       currentSettings.atmosphere_media_type = localStorage.getItem('atmosphere_media_type') || currentSettings.atmosphere_media_type || 'image';
+      currentSettings.map_embed_url = localStorage.getItem('map_embed_url') || currentSettings.map_embed_url || '';
       setSettings(currentSettings as ResortSettings);
     }
     
@@ -52,18 +53,19 @@ export default function Settings() {
     setSuccess(false);
 
     try {
-      const { resort_logo_url, atmosphere_media_url, atmosphere_media_type, ...dbSettings } = settings;
+      const { resort_logo_url, atmosphere_media_url, atmosphere_media_type, map_embed_url, ...dbSettings } = settings;
       
       if (resort_logo_url) localStorage.setItem('resort_logo_url', resort_logo_url);
       if (atmosphere_media_url) localStorage.setItem('atmosphere_media_url', atmosphere_media_url);
       if (atmosphere_media_type) localStorage.setItem('atmosphere_media_type', atmosphere_media_type);
+      if (map_embed_url !== undefined) localStorage.setItem('map_embed_url', map_embed_url);
 
       if (settings.id) {
         await supabase.from('resort_settings').update(dbSettings).eq('id', settings.id);
       } else {
         const { data } = await supabase.from('resort_settings').insert([dbSettings]).select().single();
         if (data) {
-           setSettings({ ...data, resort_logo_url, atmosphere_media_url, atmosphere_media_type } as ResortSettings);
+           setSettings({ ...data, resort_logo_url, atmosphere_media_url, atmosphere_media_type, map_embed_url } as ResortSettings);
         }
       }
       setSuccess(true);
@@ -157,14 +159,14 @@ export default function Settings() {
                   className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-cyan-500 text-slate-900 dark:text-white text-sm outline-none transition-all"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Physical Address</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Google Maps Embed URL (iframe src)</label>
                 <input
-                  type="text"
-                  name="resort_address"
-                  required
-                  value={settings.resort_address}
+                  type="url"
+                  name="map_embed_url"
+                  value={settings.map_embed_url || ''}
                   onChange={handleChange}
+                  placeholder="https://www.google.com/maps/embed?pb=..."
                   className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-cyan-500 text-slate-900 dark:text-white text-sm outline-none transition-all"
                 />
               </div>

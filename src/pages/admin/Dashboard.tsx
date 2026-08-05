@@ -4,6 +4,7 @@ import { Reservation, ResortRoom } from '../../types';
 import { Users, BedDouble, CalendarCheck, Clock, CheckCircle, Sparkles, TrendingUp, ShieldCheck } from 'lucide-react';
 import { isToday, isFuture } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { cn } from '../../lib/utils';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -14,6 +15,8 @@ export default function Dashboard() {
     activeRooms: 0,
   });
   const [recentReservations, setRecentReservations] = useState<Reservation[]>([]);
+  const [fullRoomNotices, setFullRoomNotices] = useState<any[]>([]);
+  const [roomOccupancy, setRoomOccupancy] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,6 +52,58 @@ export default function Dashboard() {
           activeRooms: rooms.length,
         });
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const notices = reservations
+          .filter(res => {
+            if (res.status !== 'confirmed') return false;
+            const checkIn = new Date(res.check_in_date);
+            const checkOut = new Date(res.check_out_date);
+            // Reset times for accurate date-only comparison
+            checkIn.setHours(0, 0, 0, 0);
+            checkOut.setHours(0, 0, 0, 0);
+            return checkIn <= today && checkOut >= today;
+          })
+          .map(res => {
+            const room = rooms.find(r => r.id === res.room_id);
+            if (room && res.guests_count >= room.capacity) {
+              return {
+                id: res.id,
+                roomName: room.room_name,
+                endDate: res.check_out_date,
+                guests: res.guests_count,
+                capacity: room.capacity
+              };
+            }
+            return null;
+          })
+          .filter(Boolean);
+
+        const occupancyData = rooms.map(room => {
+          // Find all ACTIVE reservations for THIS room today
+          const activeRes = reservations.filter(res => {
+            if (res.status !== 'confirmed') return false;
+            const checkIn = new Date(res.check_in_date);
+            const checkOut = new Date(res.check_out_date);
+            checkIn.setHours(0, 0, 0, 0);
+            checkOut.setHours(0, 0, 0, 0);
+            return res.room_id === room.id && checkIn <= today && checkOut >= today;
+          });
+          
+          // Sum up the guests
+          const currentGuests = activeRes.reduce((sum, res) => sum + res.guests_count, 0);
+          
+          return {
+            id: room.id,
+            roomName: room.room_name,
+            capacity: room.capacity,
+            currentGuests: currentGuests
+          };
+        });
+
+        setRoomOccupancy(occupancyData);
+        setFullRoomNotices(notices);
         setRecentReservations(reservations.slice(0, 5));
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -99,6 +154,36 @@ export default function Dashboard() {
         </Link>
       </div>
 
+      {/* ROOM FULL NOTICES */}
+      {fullRoomNotices.length > 0 && (
+        <div className="space-y-3">
+          {fullRoomNotices.map(notice => (
+            <div key={notice.id} className="flex items-center justify-between p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 transition-colors duration-300">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center border border-rose-200 dark:border-rose-800">
+                  <Users className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-syne font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                    <span className="text-rose-600 dark:text-rose-400">MAX CAPACITY REACHED:</span>
+                    <span>{notice.roomName}</span>
+                  </h4>
+                  <p className="text-xs font-mono text-slate-600 dark:text-slate-400 mt-0.5">
+                    Currently occupied by {notice.guests}/{notice.capacity} guests.
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="block text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Frees Up On</span>
+                <span className="px-3 py-1.5 rounded-lg bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs font-mono font-semibold text-slate-900 dark:text-white shadow-sm">
+                  {notice.endDate}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* METRICS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
         {statCards.map((stat, index) => (
@@ -115,6 +200,48 @@ export default function Dashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* LIVE ROOM OCCUPANCY */}
+      <div className="glass-card bg-white/60 dark:bg-transparent rounded-3xl border border-slate-200 dark:border-slate-800 p-6 transition-colors duration-300">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-8 h-8 rounded-xl bg-purple-100/50 dark:bg-purple-500/10 border border-purple-300 dark:border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+            <BedDouble className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-lg font-syne font-bold text-slate-900 dark:text-white">Live Room Occupancy</h3>
+            <p className="text-xs font-mono text-slate-500 dark:text-slate-400">Current guests vs max capacity per room</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {roomOccupancy.map(room => {
+            const percentage = room.capacity > 0 ? Math.min(100, (room.currentGuests / room.capacity) * 100) : 0;
+            const isMax = percentage >= 100;
+            return (
+              <div key={room.id} className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate pr-2">{room.roomName}</h4>
+                  <span className={cn(
+                    "text-[10px] font-mono font-bold px-2 py-1 rounded-md",
+                    isMax ? "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400" : "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-400"
+                  )}>
+                    {room.currentGuests}/{room.capacity} GUESTS
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className={cn(
+                      "h-full rounded-full transition-all duration-500",
+                      isMax ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" : "bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                    )}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* RECENT RESERVATIONS SUMMARY TABLE */}

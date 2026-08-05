@@ -4,9 +4,17 @@ import { ResortSettings } from '../../types';
 import BookingWidget from '../../components/BookingWidget';
 import { Anchor, Phone, Mail, Sparkles, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { cn } from '../../lib/utils';
 
 export default function Reservation() {
-  const [settings, setSettings] = useState<ResortSettings | null>(null);
+  const [settings, setSettings] = useState<ResortSettings | null>(() => {
+    if (typeof window !== 'undefined') {
+      const localLogo = localStorage.getItem('resort_logo_url');
+      if (localLogo) return { resort_logo_url: localLogo } as ResortSettings;
+    }
+    return null;
+  });
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
     async function loadSettings() {
@@ -17,6 +25,10 @@ export default function Reservation() {
         if (localLogo) loadedSettings.resort_logo_url = localLogo;
         setSettings(loadedSettings as ResortSettings);
       }
+      
+      setTimeout(() => {
+        setIsInitialLoading(false);
+      }, 1000);
     }
     loadSettings();
   }, []);
@@ -24,6 +36,30 @@ export default function Reservation() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 flex flex-col relative overflow-x-hidden">
       
+      {/* INITIAL LOADING SCREEN */}
+      <div className={cn(
+        "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950 transition-all duration-1000 ease-in-out",
+        isInitialLoading ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none scale-105"
+      )}>
+        <div className="flex flex-col items-center">
+           {settings?.resort_logo_url ? (
+             <img src={settings.resort_logo_url} alt="Brand Logo" className="w-24 h-24 object-contain animate-bounce filter drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] dark:drop-shadow-[0_0_15px_rgba(6,182,212,0.6)] mb-8" />
+           ) : (
+             <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-500 to-sky-400 flex items-center justify-center shadow-2xl shadow-cyan-500/50 mb-8 animate-bounce">
+               <Anchor className="w-10 h-10 text-slate-950" />
+             </div>
+           )}
+           <h1 className="text-3xl md:text-4xl font-syne font-bold tracking-[0.2em] uppercase text-white mb-4 drop-shadow-md">
+             {settings?.resort_name || 'AURA HAVEN'}
+           </h1>
+           <span className="text-[10px] font-mono tracking-[0.3em] text-cyan-400 uppercase flex items-center space-x-3">
+             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+             <span>PREPARING RESERVATION</span>
+             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+           </span>
+        </div>
+      </div>
+
       {/* AMBIENT LIGHTING GLOWS */}
       <div className="fixed top-0 right-1/4 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none z-0 animate-pulse-glow" />
       <div className="fixed bottom-0 left-1/4 w-[500px] h-[500px] bg-sky-600/10 rounded-full blur-[120px] pointer-events-none z-0" />
